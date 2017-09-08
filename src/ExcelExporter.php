@@ -42,26 +42,41 @@ class ExcelExporter
      */
     public function export($sql, $columns)
     {
-        $path = $this->getTemporaryCsvPath();
-        $this->db->statement(
-            $this->prepareIntoOutfileSqlStatement($sql, $columns, $path)
-        );
-        $excelPath = $path . '.xlsx';
+        $path = $this->exportCSV($sql, $columns);
+        $excelPath = str_replace('.csv', '.xlsx', $path);
         $this->csvToExcelConverter->convert($path, $excelPath);
+        unlink($path);
         return $excelPath;
     }
 
     /**
-     * Note: MySQL needs permission to write to the system's temporary directory (see secure-file-priv) !
-     * This method returns the path to a file (non-existing) in the temporary directory.
+     * Stores results of $sql (SELECT statement) into a temporary csv file.
      *
+     * @param  string $sql     SELECT statement
+     * @param  array  $columns Names of headers
+     * @return string          Path to the temporary csv file
+     */
+    public function exportCSV($sql, $columns)
+    {
+        $path = $this->getTemporaryCsvPath();
+        $this->db->statement(
+            $this->prepareIntoOutfileSqlStatement($sql, $columns, $path)
+        );
+        return $path;
+    }
+
+    /**
+     * Generates a random file name in a temporary directory where MySQL has write permissions (see secure_file_priv).
+     *
+     * @link https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_secure_file_priv
      * @return string
      */
     protected function getTemporaryCsvPath()
     {
         $filename = 'tmp_' . bin2hex(random_bytes(5)) . '.csv';
-        $path = sys_get_temp_dir() . '/' . $filename;
-        return $path;
+        $record = $this->db->selectOne('SELECT @@secure_file_priv AS secure_file');
+        $directory = $record->secure_file === null ? sys_get_temp_dir() : $record->secure_file;
+        return $directory . DIRECTORY_SEPARATOR . $filename;
     }
 
     /**
