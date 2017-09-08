@@ -30,12 +30,12 @@ class CsvToExcelConverter
      */
     public function convert($pathCsv, $pathExcel)
     {
-        $isWindows = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
+        $isLinux = stristr(PHP_OS, 'LINUX');
 
-        if ($isWindows) {
-            $this->convertWindows($pathCsv, $pathExcel);
-        } else {
+        if ($isLinux) {
             $this->convertLinux($pathCsv, $pathExcel);
+        } else {
+            $this->convertOther($pathCsv, $pathExcel);
         }
     }
 
@@ -46,7 +46,7 @@ class CsvToExcelConverter
         exec($convertCommand);
     }
 
-    protected function convertWindows($pathCsv, $pathExcel)
+    protected function convertOther($pathCsv, $pathExcel)
     {
         ini_set('max_execution_time', 0);
         $reader = ReaderFactory::create(Type::CSV);
