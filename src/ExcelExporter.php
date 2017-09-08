@@ -12,11 +12,18 @@ use Illuminate\Database\ConnectionInterface;
 class ExcelExporter
 {
     /**
+     * Query execution is delegated to a component implementing
+     * Illuminate\Database\ConnectionInterface interface. This interface
+     * is provided by Laravel (but can be used without it, see
+     * https://github.com/illuminate/database).
+     *
      * @var ConnectionInterface
      */
     protected $db;
 
     /**
+     * Conversion between CSV and Excel is delegated to another class.
+     *
      * @var CsvToExcelConverter
      */
     protected $csvToExcelConverter;
@@ -34,7 +41,7 @@ class ExcelExporter
     }
 
     /**
-     * Stores results of $sql (SELECT statement) into a temporary Excel file.
+     * Stores results of $sql (a SELECT statement) into a temporary Excel file.
      *
      * @param string $sql
      * @param array $columns Names of columns (header).
@@ -42,21 +49,21 @@ class ExcelExporter
      */
     public function export($sql, $columns)
     {
-        $path = $this->exportCSV($sql, $columns);
-        $excelPath = str_replace('.csv', '.xlsx', $path);
-        $this->csvToExcelConverter->convert($path, $excelPath);
-        unlink($path);
-        return $excelPath;
+        $pathCsv = $this->exportCsv($sql, $columns);
+        $pathExcel = str_replace('.csv', '.xlsx', $pathCsv);
+        $this->csvToExcelConverter->convert($pathCsv, $pathExcel);
+        $this->tryRemoveFile($pathCsv);
+        return $pathExcel;
     }
 
     /**
-     * Stores results of $sql (SELECT statement) into a temporary csv file.
+     * Stores results of $sql (a SELECT statement) into a temporary csv file.
      *
-     * @param  string $sql     SELECT statement
-     * @param  array  $columns Names of headers
-     * @return string          Path to the temporary csv file
+     * @param  string $sql
+     * @param  array $columns Names of columns (header).
+     * @return string Path to the temporary csv file.
      */
-    public function exportCSV($sql, $columns)
+    public function exportCsv($sql, $columns)
     {
         $path = $this->getTemporaryCsvPath();
         $this->db->statement(
@@ -66,7 +73,9 @@ class ExcelExporter
     }
 
     /**
-     * Generates a random file name in a temporary directory where MySQL has write permissions (see secure_file_priv).
+     * Generates a random filename in a temporary directory where MySQL should have write permissions (see secure_file_priv).
+     * Important: make sure that the PHP process using ExcelExporter has write permission to the same
+     * directory as well!
      *
      * @link https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_secure_file_priv
      * @return string
@@ -75,8 +84,30 @@ class ExcelExporter
     {
         $filename = 'tmp_' . bin2hex(random_bytes(5)) . '.csv';
         $record = $this->db->selectOne('SELECT @@secure_file_priv AS secure_file');
-        $directory = $record->secure_file === null ? sys_get_temp_dir() : $record->secure_file;
+        $directory = $record->secure_file ?: sys_get_temp_dir();
         return $directory . DIRECTORY_SEPARATOR . $filename;
+    }
+
+    /**
+     * Tries to remove the given file. This is used to remove temporary CSV file
+     * created by MySQL when using "SELECT INTO OUTFILE" statement.
+     * Since MySQL created that file (with "mysql" user as the owner for example),
+     * this process (PHP process under Apache or similar) might not be allowed to remove it.
+     * We continue anyway (you should adjust permissions or regularly remove temporary files).
+     *
+     * @param string $path
+     */
+    protected function tryRemoveFile($path)
+    {
+        try {
+            unlink($path);
+        } catch (\ErrorException $e) {
+            // We are not allowed to delete this file ("Operation not permitted"),
+            // proceed anyway.
+            // NOTE: unlink doesn't actually throw exceptions, it generates errors.
+            // But Laravel and other frameworks convert this error into an
+            // ErrorException.
+        }
     }
 
     /**
@@ -106,6 +137,12 @@ class ExcelExporter
         ";
     }
 
+    /**
+     * Prepare a select statement from column names (headers).
+     *
+     * @param array $columns
+     * @return string
+     */
     protected function getSelectStatement(array $columns)
     {
         $columns = $this->wrapWithSingleQuotes($columns);
@@ -113,6 +150,12 @@ class ExcelExporter
         return "SELECT $columns";
     }
 
+    /**
+     * Wrap each string in an array of strings with single quotes.
+     *
+     * @param array $strings
+     * @return array
+     */
     protected function wrapWithSingleQuotes(array $strings)
     {
         $f = function ($string) {
@@ -122,6 +165,11 @@ class ExcelExporter
         return array_map($f, $strings);
     }
 
+    /**
+     * CSV export options supported by MySQL.
+     *
+     * @return string
+     */
     protected function getCsvOptions()
     {
         return "
