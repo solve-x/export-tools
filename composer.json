@@ -1,0 +1,27 @@
+{
+    "name": "solve-x/export-tools",
+    "type": "library",
+    "description": "Export tools",
+    "keywords": [
+        "export", "exporting"
+    ],
+    "authors": [{
+        "name": "Marko Kuhar",
+        "email": "marko.kuhar@solve-x.net"
+    }, {
+        "name": "Matej Drame",
+        "email": "matej.drame@solve-x.net"
+    }],
+    "require": {
+        "box/spout": "^2.7"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "5.2",
+        "mockery/mockery": "^0.9.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "SolveX\\ExportTools\\": "src"
+        }
+    }
+}
