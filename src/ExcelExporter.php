@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace SolveX\ExportTools;
 
 use Illuminate\Database\ConnectionInterface;
 

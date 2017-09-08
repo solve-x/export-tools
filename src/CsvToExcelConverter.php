@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support;
+namespace SolveX\ExportTools;
 
 use Box\Spout\Common\Type;
 use Box\Spout\Reader\ReaderFactory;
