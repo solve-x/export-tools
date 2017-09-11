@@ -85,6 +85,9 @@ class ExcelExporter
         $filename = 'tmp_' . bin2hex(random_bytes(5)) . '.csv';
         $record = $this->db->selectOne('SELECT @@secure_file_priv AS secure_file');
         $directory = $record->secure_file ?: sys_get_temp_dir();
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN'){
+            return str_replace('\\', '\\\\', $directory) . DIRECTORY_SEPARATOR . DIRECTORY_SEPARATOR . $filename;
+        }
         return $directory . DIRECTORY_SEPARATOR . $filename;
     }
 
