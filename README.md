@@ -12,7 +12,7 @@ Example usage:
 
 use SolveX\ExportTools\ExcelExporter;
 
-$db = app('db'); // (Illuminate\Database\ConnectionInterface (Laravel)
+$db = app('db'); // Illuminate\Database\ConnectionInterface (Laravel)
 $excelExporter = new ExcelExporter($db);
 
 $sql = "SELECT first_name, last_name, phone, email FROM `customers` WHERE id = 1";
